@@ -47,30 +47,8 @@ const model = new ChatOpenAI({
 
 const checkpointer = new MemorySaver();
 
-const agent = createAgent({
+export const agent = createAgent({
   model,
   tools: [retrievalTool],
   checkpointer,
 });
-
-
-// testing the agent
-const video_id = "lfkjm2YRG-Q";
-
-console.log(
-  "Q1: Who helped with the chemistry and sourcing of materials for the fireworks video?",
-);
-const result1 = await agent.invoke(
-  {
-    messages: [
-      {
-        role: "user",
-        content:
-          "Who helped with the chemistry and sourcing of materials for the fireworks video? (based on video transcript)",
-      },
-    ],
-  },
-  { configurable: { thread_id: "1", video_id } },
-);
-
-console.log(result1.messages.at(-1).content);
