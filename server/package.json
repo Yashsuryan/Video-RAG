@@ -13,13 +13,15 @@
   "dependencies": {
     "@langchain/anthropic": "^1.5.12",
     "@langchain/classic": "^1.0.53",
-    "@langchain/core": "^1.2.18",
+    "@langchain/core": "^1.2.20",
     "@langchain/langgraph": "^1.5.1",
-    "@langchain/openai": "^1.6.2",
+    "@langchain/openai": "^1.6.3",
+    "@langchain/pgvector": "^0.1.0",
     "@langchain/textsplitters": "^1.0.2",
     "chromadb": "^3.5.0",
     "langchain": "^1.5.18",
     "openai": "^7.39.0",
+    "pg": "^8.23.1",
     "zod": "^4.6.7"
   }
 }
