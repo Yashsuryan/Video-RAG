@@ -1,68 +1,48 @@
 import { createAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import { Document } from "@langchain/core/documents";
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
-import { tool } from '@langchain/core/tools';
-import { z } from 'zod';
-
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+import { MemorySaver } from "@langchain/langgraph";
 import data from "./data.js";
+import { vectorStore, addYTVideoTOVectorStore } from "./embeddings.js";
 
-const video1 = data[0];
-
-const docs = [
-  new Document({
-    pageContent: video1.transcript,
-    metadata: { video_id: video1.video_id },
-  }),
-];
-
-//split the video into chunks
-const splitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 1000,
-  chunkOverlap: 200,
-});
-
-const chunks = await splitter.splitDocuments(docs);
-
-// console.log(chunks);
-
-// Embed the chunks
-const embeddings = new OpenAIEmbeddings({
-  model: "liquid/lfm-2.5-embedding-350m:free",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  configuration: {
-    baseURL: "https://openrouter.ai/api/v1",
-  },
-});
-
-const vectorStore = new MemoryVectorStore(embeddings);
-
-await vectorStore.addDocuments(chunks);
-
-// retrieve the most relevant chunks
-const retrievedDocs = await vectorStore.similaritySearch('what is science of fireworks?', 1);                   
-
-// console.log("RetrievedDocs: ------------------------------------------");
-// console.log(retrievedDocs);
+// const video1 = data[0];
+await addYTVideoTOVectorStore(data[0]);
+await addYTVideoTOVectorStore(data[1]);
 
 // retrieval tool
-const retrievalTool = tool(async ({ query }) => {
-    console.log('Retrieving docs for query: -------------------------------------');
+const retrievalTool = tool(
+  async ({ query }, { configurable: { video_id } }) => {
+    console.log(
+      "Retrieving docs for query: -------------------------------------",
+    );
     console.log(query);
-    const retrievedDocs = await vectorStore.similaritySearch(query, 3);
+    console.log(video_id);
 
-    const serializedDocs = retrievedDocs.map((doc)=> doc.pageContent).join('\n ');
+    const retrievedDocs = await vectorStore.similaritySearch(
+      query,
+      3,
+      (doc) => doc.metadata.video_id === video_id,
+    );
+
+    console.log("Retrived docs: -------------------------------");
+    console.log(retrievedDocs);
+
+    const serializedDocs = retrievedDocs
+      .map((doc) => doc.pageContent)
+      .join("\n ");
 
     return serializedDocs;
-}, {
-    name: 'retrieve',
-    description:'Retrieve the most relevant chunks of text from the transcript of a youtube video',
+  },
+  {
+    name: "retrieve",
+    description:
+      "Retrieve the most relevant chunks of text from the transcript of a youtube video",
     schema: z.object({
-        query: z.string(),
+      query: z.string(),
     }),
-});
+  },
+);
 
 const model = new ChatOpenAI({
   model: "cohere/north-mini-code:free",
@@ -72,19 +52,32 @@ const model = new ChatOpenAI({
   },
 });
 
+const checkpointer = new MemorySaver();
+
 const agent = createAgent({
   model,
   tools: [retrievalTool],
+  checkpointer,
 });
 
-const result = await agent.invoke({
-  messages: [
-    {
-      role: "user",
-      content: "what is science of fireworks?",
-    },
-  ],
-});
 
-// console.log(result);
-console.log(result.messages.at(-1).content);
+// testing the agent
+const video_id = "lfkjm2YRG-Q";
+
+console.log(
+  "Q1: Who helped with the chemistry and sourcing of materials for the fireworks video?",
+);
+const result1 = await agent.invoke(
+  {
+    messages: [
+      {
+        role: "user",
+        content:
+          "Who helped with the chemistry and sourcing of materials for the fireworks video? (based on video transcript)",
+      },
+    ],
+  },
+  { configurable: { thread_id: "1", video_id } },
+);
+
+console.log(result1.messages.at(-1).content);
