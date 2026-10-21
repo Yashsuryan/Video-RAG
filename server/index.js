@@ -22,8 +22,7 @@ app.post("/generate", async (req, res) => {
       messages: [
         {
           role: "user",
-          content:
-            "Who helped with the chemistry and sourcing of materials for the fireworks video? (based on video transcript)",
+          content: query,
         },
       ],
     },

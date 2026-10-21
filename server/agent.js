@@ -12,11 +12,9 @@ import { vectorStore, addYTVideoTOVectorStore } from "./embeddings.js";
 // retrieval tool
 const retrievalTool = tool(
   async ({ query }, { configurable: { video_id } }) => {
-    const retrievedDocs = await vectorStore.similaritySearch(
-      query,
-      3,
-      { video_id }
-    );
+    const retrievedDocs = await vectorStore.similaritySearch(query, 3, {
+      video_id,
+    });
 
     console.log("Retrived docs: -------------------------------");
     console.log(retrievedDocs);
@@ -51,4 +49,8 @@ export const agent = createAgent({
   model,
   tools: [retrievalTool],
   checkpointer,
+  systemPrompt: `You are an assistant that answers questions about a single YouTube video that the user is currently watching.
+    The video is already selected, so never ask the user which video they mean or for a link.
+    For every question about the video, first call the "retrieve" tool to search its transcript, then answer using only what it returns.
+    If the transcript excerpts don't contain the answer, say you couldn't find it in the transcript.`,
 });
