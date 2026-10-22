@@ -5,12 +5,15 @@ import { vectorStore, addYTVideoTOVectorStore } from "./embeddings.js";
 import { triggerYoutubeVideoScrape } from "./brightdata.js";
 
 // Keep the server alive if the database connection drops
-process.on("uncaughtException", (err) =>
-  console.error("Uncaught exception:", err.message),
-);
-process.on("unhandledRejection", (err) =>
-  console.error("Unhandled rejection:", err),
-);
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:");
+  console.error(err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION:");
+  console.error(err);
+});
 
 const port = process.env.PORT || 3000;
 
@@ -34,7 +37,16 @@ app.get("/", (req, res) => {
 const indexing = new Set();
 
 const isIndexed = async (video_id) => {
-  const docs = await vectorStore.similaritySearch("video", 1, { video_id });
+  console.log("Checking PGVector for:", video_id);
+
+  const docs = await vectorStore.similaritySearch(
+    "video",
+    1,
+    { video_id }
+  );
+
+  console.log("PGVector returned:", docs.length);
+
   return docs.length > 0;
 };
 
@@ -43,7 +55,13 @@ app.post("/generate", async (req, res) => {
   console.log({ query, video_id, thread_id });
 
   try {
-    if (!(await isIndexed(video_id))) {
+    console.log("Before isIndexed");
+
+    const indexed = await isIndexed(video_id);
+
+    console.log("After isIndexed:", indexed);
+
+    if (!indexed) {
       if (indexing.has(video_id)) {
         return res.json({
           content:
@@ -82,7 +100,16 @@ app.post("/generate", async (req, res) => {
 
 app.post("/webhook", async (req, res) => {
   const videos = Array.isArray(req.body) ? req.body : [req.body];
-  console.log("Webhook received:", videos.length, "video(s)");
+  console.log(
+  "Webhook received:",
+  videos.length,
+  "video(s)"
+);
+
+console.log(
+  "First video:",
+  videos[0]?.video_id
+);
 
   try {
     // One at a time to keep memory low on the free instance

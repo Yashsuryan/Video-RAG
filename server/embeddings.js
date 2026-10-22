@@ -4,7 +4,10 @@ import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { PGVectorStore } from "@langchain/pgvector";
 
-console.log(process.env.DB_URL);
+console.log(
+  "DB_URL exists:",
+  !!process.env.DB_URL
+);
 
 const embeddings = new OpenAIEmbeddings({
   model: "liquid/lfm-2.5-embedding-350m:free",
@@ -14,22 +17,34 @@ const embeddings = new OpenAIEmbeddings({
   },
 });
 
-export const vectorStore = await PGVectorStore.initialize(
-  embeddings,
-  {
-    postgresConnectionOptions: {
+let vectorStore;
+
+try {
+  vectorStore = await PGVectorStore.initialize(
+    embeddings,
+    {
+      postgresConnectionOptions: {
         connectionString: process.env.DB_URL,
-    },
-    tableName: 'transcripts',
-    columns: {
-        idColumnName: 'id',
-        vectorColumnName: 'vector',
-        contentColumnName: 'content',
-        metadataColumnName: 'metadata',
-    },
-    distanceStrategy: 'cosine',
-  }
-);
+      },
+      tableName: "transcripts",
+      columns: {
+        idColumnName: "id",
+        vectorColumnName: "vector",
+        contentColumnName: "content",
+        metadataColumnName: "metadata",
+      },
+      distanceStrategy: "cosine",
+    }
+  );
+
+  console.log("✅ PGVector connected");
+} catch (err) {
+  console.error("❌ PGVector initialization failed");
+  console.error(err);
+  throw err;
+}
+
+export { vectorStore };
 
 
 export const addYTVideoTOVectorStore = async (videoData) => {
