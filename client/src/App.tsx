@@ -10,8 +10,42 @@ interface Message {
   error?: boolean;
 }
 
-const API_URL =
-  (import.meta.env.VITE_API_URL as string) || "http://localhost:3000";
+const API_URL = (
+  (import.meta.env.VITE_API_URL as string) ||
+  "https://video-rag-cn3e.onrender.com"
+).replace(/\/+$/, "");
+
+const DEFAULT_VIDEO_ID = "lfkjm2YRG-Q";
+const VIDEO_ID_PATTERN = /^[\w-]{11}$/;
+
+/**
+ * Accepts a bare YouTube video ID or a full URL (watch, youtu.be, shorts,
+ * embed, live) and returns the 11-character ID, or null if it's not valid.
+ */
+function extractVideoId(value: string): string | null {
+  const text = value.trim();
+  if (VIDEO_ID_PATTERN.test(text)) return text;
+
+  try {
+    const url = new URL(text);
+    const host = url.hostname.replace(/^www\./, "");
+    let id: string | null = null;
+
+    if (host === "youtu.be") {
+      id = url.pathname.slice(1).split("/")[0];
+    } else if (host.endsWith("youtube.com")) {
+      id = url.searchParams.get("v");
+      if (!id) {
+        const match = url.pathname.match(/^\/(?:shorts|embed|live)\/([^/]+)/);
+        id = match?.[1] ?? null;
+      }
+    }
+
+    return id && VIDEO_ID_PATTERN.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 function SparkIcon() {
   return (
@@ -31,6 +65,29 @@ function SparkIcon() {
         fill="currentColor"
         opacity="0.6"
       />
+    </svg>
+  );
+}
+
+function VideoIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect
+        x="3"
+        y="6"
+        width="18"
+        height="12"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path d="M10.5 9.5v5l4-2.5-4-2.5z" fill="currentColor" />
     </svg>
   );
 }
@@ -88,7 +145,14 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // One thread per page load
+  // videoId is the committed value sent to the API;
+  // videoInput is whatever is currently typed in the field.
+  const [videoId, setVideoId] = useState(DEFAULT_VIDEO_ID);
+  const [videoInput, setVideoInput] = useState(DEFAULT_VIDEO_ID);
+  const videoInvalid =
+    videoInput.trim() !== "" && extractVideoId(videoInput) === null;
+
+  // One thread per video (a new video starts a fresh conversation)
   const threadId = useRef<string>(crypto.randomUUID());
   const nextId = useRef(1);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -106,6 +170,26 @@ export default function App() {
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
+
+  const commitVideo = () => {
+    const id = extractVideoId(videoInput);
+    if (!id) return; // invalid: keep the old video, field shows the error
+
+    setVideoInput(id); // normalise a pasted URL down to the bare ID
+    if (id !== videoId) {
+      setVideoId(id);
+      threadId.current = crypto.randomUUID();
+      setMessages([]);
+    }
+  };
+
+  const handleVideoKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitVideo();
+      e.currentTarget.blur();
+    }
+  };
 
   const sendMessage = async () => {
     const prompt = input.trim();
@@ -127,13 +211,20 @@ export default function App() {
         body: JSON.stringify({
           query: userMsg.content,
           thread_id: threadId.current,
-          video_id: "lfkjm2YRG-Q",
+          video_id: videoId,
         }),
       });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? `Request failed (${res.status})`);
+      }
 
-      const content = await res.text();
+      // Works with both `res.json("text")` and `res.json({ content })`
+      const data = await res.json();
+      const content =
+        typeof data === "string" ? data : (data?.content ?? "");
+
       setMessages((prev) => [
         ...prev,
         { id: nextId.current++, role: "assistant", content },
@@ -176,6 +267,26 @@ export default function App() {
             <SparkIcon />
           </span>
           <h1>AI Chat</h1>
+
+          <label
+            className={`video-field${videoInvalid ? " invalid" : ""}`}
+            title="YouTube video ID or URL. Press Enter to apply."
+          >
+            <VideoIcon />
+            <input
+              type="text"
+              value={videoInput}
+              onChange={(e) => setVideoInput(e.target.value)}
+              onBlur={commitVideo}
+              onKeyDown={handleVideoKeyDown}
+              placeholder="Video ID or URL"
+              spellCheck={false}
+              autoComplete="off"
+              disabled={loading}
+              aria-label="YouTube video ID or URL"
+              aria-invalid={videoInvalid}
+            />
+          </label>
         </div>
       </header>
 
@@ -187,7 +298,7 @@ export default function App() {
                 <SparkIcon />
               </span>
               <h2>How can I help you today?</h2>
-              <p>Ask a question or start a conversation below.</p>
+              <p>Ask a question about the selected video below.</p>
             </div>
           )}
 

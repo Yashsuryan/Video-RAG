@@ -36,7 +36,8 @@ body {
 }
 
 button,
-textarea {
+textarea,
+input {
   font: inherit;
   color: inherit;
 }
@@ -75,6 +76,55 @@ textarea {
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Video selector */
+.video-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  width: 220px;
+  max-width: 50%;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.video-field svg {
+  flex-shrink: 0;
+}
+
+.video-field:focus-within {
+  border-color: #3a3a46;
+  color: var(--text);
+}
+
+.video-field.invalid {
+  border-color: var(--danger);
+}
+
+.video-field input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.video-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.video-field input:disabled {
+  opacity: 0.6;
 }
 
 /* Logo / avatar */
@@ -329,6 +379,10 @@ textarea {
 
   .bubble {
     max-width: 92%;
+  }
+
+  .video-field {
+    width: 160px;
   }
 
   .hint {
