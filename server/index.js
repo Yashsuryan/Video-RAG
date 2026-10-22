@@ -39,11 +39,7 @@ const indexing = new Set();
 const isIndexed = async (video_id) => {
   console.log("Checking PGVector for:", video_id);
 
-  const docs = await vectorStore.similaritySearch(
-    "video",
-    1,
-    { video_id }
-  );
+  const docs = await vectorStore.similaritySearch("video", 1, { video_id });
 
   console.log("PGVector returned:", docs.length);
 
@@ -99,17 +95,12 @@ app.post("/generate", async (req, res) => {
 });
 
 app.post("/webhook", async (req, res) => {
-  const videos = Array.isArray(req.body) ? req.body : [req.body];
-  console.log(
-  "Webhook received:",
-  videos.length,
-  "video(s)"
-);
+  console.log("========== WEBHOOK HIT ==========");
 
-console.log(
-  "First video:",
-  videos[0]?.video_id
-);
+  const videos = Array.isArray(req.body) ? req.body : [req.body];
+
+  console.log("Webhook received:", videos.length, "video(s)");
+  console.log("First video:", videos[0]?.video_id);
 
   try {
     // One at a time to keep memory low on the free instance
@@ -122,6 +113,10 @@ console.log(
     console.error("Webhook indexing failed:", err);
     res.status(500).send("Indexing failed");
   }
+});
+
+app.get("/webhook-test", (req, res) => {
+  res.send("webhook reachable");
 });
 
 app.listen(port, () => {
