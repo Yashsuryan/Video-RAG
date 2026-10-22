@@ -7,7 +7,9 @@ const port = process.env.PORT || 3000;
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: ["https://video-rag-cn3e.onrender.com/", "http://localhost:5173"],
+}));
 
 app.get("/", (req, res) => {
   res.send("hello world");
