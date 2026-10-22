@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
 import { agent } from "./agent.js";
+import { addYTVideoTOVectorStore } from "./embeddings.js";
 
 const port = process.env.PORT || 3000;
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '200mb' }));
 app.use(cors({
     origin: ["https://client-omega-hazel-63.vercel.app", "http://localhost:5173"],
 }));
@@ -34,8 +35,11 @@ app.post("/generate", async (req, res) => {
   res.json(result1.messages.at(-1)?.content);
 });
 
-app.post('/webhook', (req, res) => {
-    console.log(req.body);
+app.post('/webhook', async (req, res) => {
+
+    await Promise.all(
+        req.body.map(async (video) => addYTVideoTOVectorStore(video))
+    );
 
     res.send('OK');
 })
